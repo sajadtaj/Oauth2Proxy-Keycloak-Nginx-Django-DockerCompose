@@ -524,3 +524,177 @@ docker compose logs -f nginx
 [9]: https://oauth2-proxy.github.io/oauth2-proxy/?utm_source=chatgpt.com "Welcome | OAuth2 Proxy - GitHub Pages"
 [10]: https://github.com/oauth2-proxy/oauth2-proxy/issues/2653?utm_source=chatgpt.com "Trying to implement simple Oauth2-proxy/nginx configuration"
 [11]: https://zeropath.com/blog/cve-2025-54576-oauth2-proxy-auth-bypass?utm_source=chatgpt.com "OAuth2-Proxy CVE-2025-54576: Brief Summary of a ..."
+
+
+# Patch
+
+
+## 🧩 نحوه دسترسی (Access)
+
+* **اپ (Nginx → Django)**
+
+  * صفحه عمومی: `http://app.127.0.0.1.nip.io:8080/public`
+  * صفحه خصوصی (نیازمند لاگین): `http://app.127.0.0.1.nip.io:8080/private`
+* **Keycloak (IdP)**
+
+  * کنسول ادمین: `http://auth.127.0.0.1.nip.io:8081/admin/`
+
+    * **ادمین (master realm):** `admin / admin`
+  * صفحه لاگین رِلم demo به‌صورت خودکار از `/private` فراخوانی می‌شود.
+
+    * **کاربر تست (demo realm):** `demo / demo`
+
+> اگر دامنه‌های nip.io در مرورگرت دردسر داشتند، از ورودی‌های معادل نیز می‌توانی استفاده کنی:
+> `http://127.0.0.1:8080/public` و `http://127.0.0.1:8080/private` (redirect همچنان به nip.io می‌رود؛ مطمئن شو `/etc/hosts` مطابق بخش «دیباگ» ست شده است).
+
+---
+
+## 🌐 آدرس‌ها (Endpoints)
+
+* **Nginx (Gateway):**
+
+  * `/public` → آزاد
+  * `/private` → `auth_request /oauth2/auth` → (202/401)
+  * `/oauth2/*` → proxy به OAuth2-Proxy
+* **OAuth2-Proxy:**
+
+  * Discovery: `OAUTH2_PROXY_OIDC_ISSUER_URL = http://auth.127.0.0.1.nip.io:8081/realms/demo`
+  * Callback: `http://app.127.0.0.1.nip.io:8080/oauth2/callback`
+* **Keycloak (demo realm):**
+
+  * Discovery: `http://auth.127.0.0.1.nip.io:8081/realms/demo/.well-known/openid-configuration`
+  * Auth endpoint: `/realms/demo/protocol/openid-connect/auth`
+  * Token endpoint: `/realms/demo/protocol/openid-connect/token`
+
+---
+
+## 🛠️ دیباگ (Troubleshooting)
+
+### 1) اطمینان از سلامت سرویس‌ها
+
+```bash
+docker compose ps
+docker compose logs -f keycloak
+docker compose logs -f oauth2-proxy
+docker compose logs -f nginx
+```
+
+### 2) تست لایه به لایه با curl
+
+```bash
+# Keycloak Discovery باید 200 دهد
+curl -I http://auth.127.0.0.1.nip.io:8081/realms/demo/.well-known/openid-configuration
+
+# Gateway → App
+curl -i http://app.127.0.0.1.nip.io:8080/public      # 200 Hello Public
+curl -i http://app.127.0.0.1.nip.io:8080/private     # 302 → Keycloak
+
+# شبیه‌سازی Host Header (اگر DNS مرورگر مشکوک بود)
+curl -i -H 'Host: app.127.0.0.1.nip.io' http://127.0.0.1:8080/public
+```
+
+### 3) مشکلات مرورگر (ERR\_EMPTY\_RESPONSE / redirect کار نمی‌کند)
+
+* **DNS محلی را قطعی کن** (Override در /etc/hosts):
+
+  ```bash
+  # هر دو دامنه باید به 127.0.0.1 نگاشت شوند
+  sudo sh -c 'printf "\n# dev overrides for auth-stack\n127.0.0.1 app.127.0.0.1.nip.io auth.127.0.0.1.nip.io\n" >> /etc/hosts'
+  getent hosts app.127.0.0.1.nip.io
+  getent hosts auth.127.0.0.1.nip.io
+  ```
+* **پاکسازی Chrome** (برای DEV HTTP):
+
+  1. Settings → Privacy:
+
+     * **Use secure DNS** = OFF
+     * **Always use secure connections (HTTPS-First)** = OFF
+  2. `chrome://net-internals/#dns` → **Clear host cache**
+  3. `chrome://net-internals/#hsts` → **Delete domain security policies** برای:
+     `app.127.0.0.1.nip.io` و `auth.127.0.0.1.nip.io`
+  4. یک پنجره **Incognito** بدون افزونه باز کن.
+* **بررسی Nginx واقعاً فایل کانفیگ جدید را دارد**:
+
+  ```bash
+  docker exec -it demo-nginx ash -lc 'sed -n "1,140p" /etc/nginx/nginx.conf'
+  # باید resolver 127.0.0.11 و proxy_pass مستقیم ببینی (بدون upstream)
+  docker compose restart nginx
+  ```
+
+### 4) OAuth2-Proxy Cookie Secret اشتباه
+
+* خطا: `cookie_secret must be 16, 24, or 32 bytes ...`
+* تولید درست 32 بایتی:
+
+  ```bash
+  python3 - <<'PY'
+  import secrets, base64
+  raw = secrets.token_bytes(32)
+  b64 = base64.urlsafe_b64encode(raw).decode().rstrip('\n')
+  print("PUT_THIS_IN_CONFIG=", b64)
+  print("DECODED_LEN=", len(base64.urlsafe_b64decode(b64)))
+  PY
+  ```
+
+  مقدار `PUT_THIS_IN_CONFIG_=` را در `oauth2-proxy.cfg` جایگزین کن و سرویس را ریستارت کن.
+
+### 5) خطای issuer mismatch
+
+* مقدار Issuer Keycloak (در Discovery) باید **مو به مو** با `OAUTH2_PROXY_OIDC_ISSUER_URL` یکی باشد.
+* چک:
+
+  ```bash
+  curl -s http://auth.127.0.0.1.nip.io:8081/realms/demo/.well-known/openid-configuration | jq .issuer
+  # باید: "http://auth.127.0.0.1.nip.io:8081/realms/demo"
+  ```
+
+---
+
+## 🧭 نحوه دسترسی (Quick Start برای تیم)
+
+1. **بالا آوردن استک**
+
+   ```bash
+   cd auth-stack
+   docker compose up -d --build
+   ```
+2. **باز کردن صفحات**
+
+   * اپ:
+     `http://app.127.0.0.1.nip.io:8080/public`
+     `http://app.127.0.0.1.nip.io:8080/private`
+   * Keycloak Admin:
+     `http://auth.127.0.0.1.nip.io:8081/admin/` → `admin / admin`
+3. **لاگین تست**
+
+   * رِلم demo: `demo / demo` → بعد از ورود، `/private` باید 200 شود.
+
+---
+
+## 🌐 نکته شبکه و VPN
+
+* **VPN** یا **Proxy سازمانی** می‌تواند ترافیک دامنه‌های `*.nip.io` را از مسیر غیرلوکال عبور دهد و باعث عدم دسترسی یا خطا شود.
+* برای توسعهٔ محلی، توصیه می‌شود:
+
+  * **VPN را موقتاً خاموش** کنید، یا
+  * برای `*.nip.io` استثنا (Split Tunnel) تعریف کنید، یا
+  * از **/etc/hosts** همان‌طور که بالاتر گفتیم استفاده کنید تا همیشه به `127.0.0.1` resolve شود.
+
+> اگر مجبورید VPN روشن باشد و امکان Split Tunnel ندارید، برای DEV می‌توانید **ورودی‌های معادل** را استفاده کنید:
+> `http://127.0.0.1:8080/public` و `http://127.0.0.1:8080/private`
+> (Redirect به nip.io با `/etc/hosts` درست کار خواهد کرد.)
+
+---
+
+### ✅ چک‌لیست نهایی فاز ۲ (به‌روزشده با دسترسی/دیباگ)
+
+* [x] `/public` → 200 OK
+* [x] `/private` → 302 به Keycloak → پس از لاگین 200
+* [x] Issuer واحد (nip.io:8081) و هماهنگ با OAuth2-Proxy
+* [x] Redirect URI دقیق (`/oauth2/callback`) در Realm و Proxy
+* [x] Nginx: `resolver 127.0.0.11` + `proxy_pass` مستقیم (بدون upstream)
+* [x] Cookie Secret صحیح (۳۲ بایت)
+* [x] `/etc/hosts` (dev override) برای `app.` و `auth.` → `127.0.0.1`
+* [x] راهنمای دیباگ و روش کار با مرورگر (DNS/HSTS/DoH/Proxy/VPN)
+
+---
