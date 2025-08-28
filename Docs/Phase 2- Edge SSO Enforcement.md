@@ -380,6 +380,19 @@ http {
 
 > استفاده از ENVهای رسمی با پیشوند `OAUTH2_PROXY_...` (خوانده‌شده توسط خود کانتینر). ([OAuth2 Proxy][9])
 
+```bash
+python3 - <<'PY'
+import secrets, base64
+raw = secrets.token_bytes(32)           # 32 بایت واقعی
+b64 = base64.urlsafe_b64encode(raw).decode().rstrip('\n')
+print("PUT_THIS_IN_CONFIG=", b64)
+print("DECODED_LEN=", len(base64.urlsafe_b64decode(b64)))
+PY
+
+```
+> عدد بدست امده را در زیر وارد کنید :
+> OAUTH2_PROXY_COOKIE_SECRET=CHANGE_ME_32BYTE_BASE64URL
+
 ```dotenv
 # Provider & OIDC
 OAUTH2_PROXY_PROVIDER=keycloak-oidc
@@ -451,6 +464,10 @@ OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
 }
 ```
 
+> نکته این دو باید برابر باشند:
+> `secret`=`OAUTH2_PROXY_CLIENT_SECRET`
++ OAUTH2_PROXY_CLIENT_SECRET --> /oauth2-proxy/oauth2-proxy.cfg 
++ secret  --> o keycloak/realms/demo-realm.json
 ---
 
 ## 6) اجرای تست (High-Level)
