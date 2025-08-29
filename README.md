@@ -1,6 +1,6 @@
 <div dir="rtl">
 
-# مستند پروژه: «Hello World با Django پشت Nginx + OAuth2‑Proxy + Keycloak (Docker Compose)»
+# Django + Nginx + OAuth2‑Proxy + Keycloak + DockerCompose
 
 > هدف: یک پیج ساده Django بالا بیاوریم که:
 >
@@ -103,6 +103,21 @@ flowchart LR
 > بعد از پایان هر فاز، منتظر تایید شما می‌مانم تا به فاز بعدی برویم.
 
 ---
+## 3.1) برنامه اجرای فازها (نمای کلی)
+
+1. **فاز 1** — راه‌اندازی اسکلت Compose + Nginx + Django (بدون Auth)
+   خروجی: `/public` و `/private` هردو باز.
+
+2. **فاز 2** — افزودن Keycloak (`start-dev --import-realm`) و OAuth2‑Proxy + محافظت `/private` با `auth_request`
+   خروجی: `/public` آزاد، `/private` نیازمند لاگین Keycloak.
+
+3. **فاز 3** — عبور هدرهای هویتی به Django و نمایش اطلاعات کاربر در صفحه خصوصی
+   خروجی: “Hello Private, <user>”.
+
+4. **فاز 4 (اختیاری)** — Redis session store، TLS، Role/Group‑based access، و سخت‌سازی.
+
+
+## 3.2) تشریح فازها
 
 ### فاز 1 — بوت‌استرپ پایه (Django + Nginx بدون احراز هویت)
 
@@ -269,21 +284,6 @@ sequenceDiagram
 
 * بررسی مسیرهای خط‌مشی (Route Guards) و ریدایرکت‌های 401/403.
 * تست کوکی‌های Split اگر توکن بزرگ است (طبق نکات مستند Nginx). ([oauth2-proxy.github.io][1])
-
----
-
-## 4) برنامه اجرای فازها (نمای کلی)
-
-1. **فاز 1** — راه‌اندازی اسکلت Compose + Nginx + Django (بدون Auth)
-   خروجی: `/public` و `/private` هردو باز.
-
-2. **فاز 2** — افزودن Keycloak (`start-dev --import-realm`) و OAuth2‑Proxy + محافظت `/private` با `auth_request`
-   خروجی: `/public` آزاد، `/private` نیازمند لاگین Keycloak.
-
-3. **فاز 3** — عبور هدرهای هویتی به Django و نمایش اطلاعات کاربر در صفحه خصوصی
-   خروجی: “Hello Private, <user>”.
-
-4. **فاز 4 (اختیاری)** — Redis session store، TLS، Role/Group‑based access، و سخت‌سازی.
 
 ---
 
