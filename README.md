@@ -1,4 +1,32 @@
-<div dir="rtl">
+<style>
+.rtl-align {
+  direction: rtl;
+  text-align: right;
+}
+
+/* لیست‌ها هم راست‌چین */
+.rtl-align ul,
+.rtl-align ol {
+  list-style-position: inside;
+  padding-right: 0;
+  margin-right: 1em;
+}
+
+/* فقط باکس‌های کد (مثل ```...```) چپ‌چین و مونو */
+.rtl-align pre code {
+  direction: ltr;           /* جهت چپ به راست */
+  text-align: left;         /* تراز چپ */
+  display: block;           /* حالت باکس */
+  background: #f5f5f5;      /* پس‌زمینه روشن مثل حالت کد */
+  padding: 10px;            /* فاصله داخلی */
+  border-radius: 5px;       /* گوشه‌های گرد */
+  font-family: monospace;   /* فونت مونو برای کد */
+  white-space: pre;         /* حفظ فاصله‌ها */
+}
+
+</style>
+
+<div class="rtl-align">
 
 # Django + Nginx + OAuth2‑Proxy + Keycloak + DockerCompose
 
@@ -327,11 +355,6 @@ sequenceDiagram
 * ریپوی آموزشی **deskoh** (الگوی nip.io و alias شبکه برای سازگاری نام‌دامنه بین مرورگر و کانتینرها). ([GitHub][5])
 * یادداشت‌های تکمیلی درباره الگوی LB با nginx + oauth2‑proxy + keycloak (نوشته‌ی وبلاگی). ([layandreas.github.io][10])
 
----
-
-### آماده برای ادامه؟
-
-اگر این طراحی و فازبندی را تایید می‌کنی، با «فاز 1» شروع کنم تا اسکلت **Compose + Nginx + Django** (بدون Auth) را بسازم و تحویل بدهم؟
 
 [1]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/integration/ "Integration | OAuth2 Proxy"
 [2]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/providers/keycloak_oidc/ "Keycloak OIDC | OAuth2 Proxy"
