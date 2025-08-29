@@ -36,6 +36,33 @@
 
 # 1) تعامل این چهار جزء، قدم‌به‌قدم (ساده و شفاف)
 
+#### دیاگرام تعامل 
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as Browser
+    participant N as Nginx (Gateway)
+    participant P as OAuth2-Proxy
+    participant K as Keycloak (IdP)
+    participant D as Django (App)
+
+    B->>N: GET /private
+    N->>P: internal GET /oauth2/auth (auth_request)
+    alt Not logged in
+        P-->>N: 401 Unauthorized
+        N-->>B: 302 /oauth2/start → Keycloak login
+        B->>K: Login form (demo/demo)
+        K-->>P: code → tokens (callback)
+        P-->>N: 202 + X-Auth-Request-User/Email
+    else Logged in
+        P-->>N: 202 + X-Auth-Request-User/Email
+    end
+    N->>D: proxy_pass /private + headers X-User/X-Email
+    D-->>N: Hello Private, <user> (<email>)
+    N-->>B: 200 OK (personalized)
+```
+
 فرض کن کاربر آدرس **`/private`** رو در مرورگر می‌زنه:
 
 1. **مرورگر → Nginx**
@@ -96,36 +123,8 @@
 
 ---
 
-# 3) دیاگرام تعامل (Mermaid)
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor B as Browser
-    participant N as Nginx (Gateway)
-    participant P as OAuth2-Proxy
-    participant K as Keycloak (IdP)
-    participant D as Django (App)
-
-    B->>N: GET /private
-    N->>P: internal GET /oauth2/auth (auth_request)
-    alt Not logged in
-        P-->>N: 401 Unauthorized
-        N-->>B: 302 /oauth2/start → Keycloak login
-        B->>K: Login form (demo/demo)
-        K-->>P: code → tokens (callback)
-        P-->>N: 202 + X-Auth-Request-User/Email
-    else Logged in
-        P-->>N: 202 + X-Auth-Request-User/Email
-    end
-    N->>D: proxy_pass /private + headers X-User/X-Email
-    D-->>N: Hello Private, <user> (<email>)
-    N-->>B: 200 OK (personalized)
-```
-
----
-
-# 4) مثال‌های واقعی از همین پروژه (کد/کانفیگ‌های کلیدی)
+# 3) مثال‌های واقعی از همین پروژه (کد/کانفیگ‌های کلیدی)
 
 ### Nginx (خلاصه بخش‌های مهم)
 
@@ -181,7 +180,7 @@ def private_view(request):
 
 ---
 
-# 5) اگر بخوام پروژه رو «شاخه‌برگ» بدم، چه گزینه‌هایی دارم؟
+# 4) اگر بخوام پروژه رو «شاخه‌برگ» بدم، چه گزینه‌هایی دارم؟
 
 ایده‌ها + فایل‌هایی که باید تغییر بدی:
 
@@ -254,7 +253,7 @@ def private_view(request):
 
 ---
 
-# 6) جمع‌بندی کوتاه
+# 5) جمع‌بندی کوتاه
 
 * **کلیدِ تعامل**:
   `nginx.conf` (auth\_request + انتقال هدرها) ←→ `oauth2-proxy.cfg` (issuer/client/redirect/set\_xauthrequest) ←→ Keycloak realm (client/redirectUris/secret) ←→ Django (خواندن هدرها از `request.META`).

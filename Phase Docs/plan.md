@@ -1,31 +1,32 @@
 ```mermaid
-flowchart LR
-    User[👤 کاربر]
-    Traefik[🛡️ Traefik + OAuth2]
-    Backend[⚙️ بک‌اند]
-    
-    PublicPage[🌐 صفحه عمومی]
-    PrivatePage[🔒 صفحه خصوصی]
-    Login[🔑 صفحه لاگین]
+sequenceDiagram
+    autonumber
+    actor Browser
+    participant Nginx
+    participant OAuth2Proxy
+    participant Keycloak
+    participant Django
 
-    %% مسیرهای عمومی - بدون احراز هویت
-    User -- 1.درخواست صفحه عمومی --> Traefik
-    Traefik -- 2.دسترسی مستقیم --> PublicPage
-    PublicPage -- 3.درخواست داده --> Backend
-    Backend -- 4.پاسخ داده --> PublicPage
+    %% مسیر عمومی (آبی)
+    Browser->>Nginx: GET /public
+    Nginx->>Django: proxy_pass /public
+    Django-->>Nginx: Hello Public
+    Nginx-->>Browser: 200 OK
+    Note over Browser,Django: 🟦 Public flow (blue)
 
-    %% مسیرهای خصوصی - نیازمند احراز هویت
-    User -- 5.درخواست صفحه خصوصی --> Traefik
-    Traefik -- 6.redirect به لاگین --> Login
-    Login -- 7.نمایش فرم --> User
-    User -- 8.ارسال اطلاعات --> Traefik
-    Traefik -- 9.اعتبارسنجی --> Backend
-    Backend -- 10.تأیید اعتبار --> Traefik
-    Traefik -- 11.دسترسی مجاز --> PrivatePage
-    PrivatePage -- 12.درخواست داده --> Backend
-    Backend -- 13.پاسخ داده --> PrivatePage
+    %% مسیر خصوصی (سبز)
+    Browser->>Nginx: GET /private
+    Nginx->>OAuth2Proxy: auth_request /oauth2/auth
+    alt Not logged in
+        OAuth2Proxy-->>Nginx: 401 Unauthorized
+        Nginx-->>Browser: 302 Redirect to Keycloak
+        Browser->>Keycloak: Login
+        Keycloak-->>OAuth2Proxy: Tokens
+    end
+    OAuth2Proxy-->>Nginx: 202 X-User, X-Email
+    Nginx->>Django: proxy_pass /private + headers
+    Django-->>Nginx: Hello Private, {user}
+    Nginx-->>Browser: 200 OK
+    Note over Browser,Keycloak: 🟩 Private flow (green)
 
-    %% استایل خطوط
-    linkStyle 0,1,2,3 stroke:green,stroke-width:3px
-    linkStyle 4,5,6,7,8,9,10,11,12 stroke:red,stroke-width:3px
 ```
