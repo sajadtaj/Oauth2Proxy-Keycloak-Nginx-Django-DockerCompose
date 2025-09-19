@@ -57,7 +57,7 @@ sequenceDiagram
 ### کارکردها
 
 * `/public` → پاسخ “Hello Public” از Django، بدون لاگین.
-* `/private` → اگر کاربر لاگین نیست → ری‌دایرکت به صفحه ورود Keycloak؛ اگر لاگین است → پاسخ “Hello Private, <user>”.
+* `/private` → اگر کاربر لاگین نیست → ری‌دایرکت به صفحه ورود Keycloak؛ اگر لاگین است → پاسخ “Hello Private, `<user>`”.
 * عبور هدرهای هویتی به Django (مثل `X-User`, `X-Email`) در مسیر محافظت‌شده.
 
 ### نیازمندی‌ها
@@ -131,23 +131,15 @@ flowchart LR
 
 ## 3) فازبندی پروژه (High‑Level Plan)
 
-> طبق درخواست شما، در هر فاز ابتدا **دیاگرام فاز** و سپس **دستور ساخت مسیرها/فایل‌ها (ترمینال)** و بعد **جدول فایل‌ها و نقش** و **روش تست** (فقط تعریف کلی) آورده شده است.
-> بعد از پایان هر فاز، منتظر تایید شما می‌مانم تا به فاز بعدی برویم.
-
----
 ## 3.1) برنامه اجرای فازها (نمای کلی)
 
 1. **فاز 1** — راه‌اندازی اسکلت Compose + Nginx + Django (بدون Auth)
    خروجی: `/public` و `/private` هردو باز.
-
 2. **فاز 2** — افزودن Keycloak (`start-dev --import-realm`) و OAuth2‑Proxy + محافظت `/private` با `auth_request`
    خروجی: `/public` آزاد، `/private` نیازمند لاگین Keycloak.
-
 3. **فاز 3** — عبور هدرهای هویتی به Django و نمایش اطلاعات کاربر در صفحه خصوصی
-   خروجی: “Hello Private, <user>”.
-
+   خروجی: “Hello Private, `<user>`”.
 4. **فاز 4 (اختیاری)** — Redis session store، TLS، Role/Group‑based access، و سخت‌سازی.
-
 
 ## 3.2) تشریح فازها
 
@@ -183,24 +175,21 @@ auth-stack/
 │   └── nginx.conf
 └── app/
 ```
+
 <div dir="rtl">
 
 #### نقش فایل‌ها
 
-| مسیر                 | نقش                                                                          |
-| -------------------- | ---------------------------------------------------------------------------- |
+| مسیر               | نقش                                                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------------------------- |
 | `docker-compose.yml` | تعریف سرویس‌های `nginx` و `django` (فعلاً بدون Keycloak/OAuth2‑Proxy)        |
 | `nginx/nginx.conf`   | Reverse proxy ساده به Django؛ تعریف `/public` و `/private` (فعلاً هر دو باز) |
-| `app/`               | کد ساده Django (Hello World) برای دو مسیر `/public` و `/private`             |
+| `app/`               | کد ساده Django (Hello World) برای دو مسیر `/public` و `/private`                     |
 
 #### روش تست (کلی)
 
 * اجرای Compose و درخواست به `/public` و `/private` → هر دو پاسخ 200.
 * لاگ Nginx/Django بررسی شود؛ هدرهای پایه عبور کنند.
-
-> اگر تایید بفرمایید، در مرحله اجرا کد و کانفیگ مینیمال همین فاز را تولید می‌کنم.
-
----
 
 ### فاز 2 — افزودن Keycloak و OAuth2‑Proxy و محافظت از `/private`
 
@@ -241,15 +230,16 @@ auth-stack/
 │       └── demo-realm.json
 └── app/
 ```
+
 <div dir='rtl'>
 
 #### نقش فایل‌ها
 
-| مسیر                              | نقش                                                                                                                                                                                                        |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `keycloak/realms/demo-realm.json` | Realm نمونه برای Import در استارت (نام Realm: `demo`، Client: `oauth2-proxy` با Redirect URI به `http://app.127.0.0.1.nip.io:8080/oauth2/callback`)؛ ایمپورت با `--import-realm`. ([Keycloak][7])          |
-| `oauth2-proxy/oauth2-proxy.cfg`   | تنظیمات Provider (`--provider=keycloak-oidc`، `--oidc-issuer-url`، `--client-id/secret`، `--redirect-url`، `--reverse-proxy`، `--set-xauthrequest`، و …). ([oauth2-proxy.github.io][2])                    |
-| `nginx/nginx.conf`                | افزودن بلوک‌های `location /oauth2/` و `location = /oauth2/auth` و `auth_request` مطابق راهنمای رسمی. ([oauth2-proxy.github.io][1])                                                                         |
+| مسیر                            | نقش                                                                                                                                                                                                                                                                            |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keycloak/realms/demo-realm.json` | Realm نمونه برای Import در استارت (نام Realm:`demo`، Client: `oauth2-proxy` با Redirect URI به `http://app.127.0.0.1.nip.io:8080/oauth2/callback`)؛ ایمپورت با `--import-realm`. ([Keycloak][7])                                       |
+| `oauth2-proxy/oauth2-proxy.cfg`   | تنظیمات Provider (`--provider=keycloak-oidc`، `--oidc-issuer-url`، `--client-id/secret`، `--redirect-url`، `--reverse-proxy`، `--set-xauthrequest`، و …). ([oauth2-proxy.github.io][2])                                                                |
+| `nginx/nginx.conf`                | افزودن بلوک‌های `location /oauth2/` و `location = /oauth2/auth` و `auth_request` مطابق راهنمای رسمی. ([oauth2-proxy.github.io][1])                                                                                                          |
 | `docker-compose.yml`              | اضافه‌کردن سرویس‌های `keycloak` (با `start-dev --import-realm`) و `oauth2-proxy` + تعریف network alias برای حل مشکل Issuer دامنه در لوکال (الگوی nip.io، مشابه نمونه deskoh). ([Keycloak][3], [GitHub][5]) |
 
 #### روش تست (کلی)
@@ -257,10 +247,6 @@ auth-stack/
 * درخواست `GET /public` → **200 OK** بدون لاگین.
 * درخواست `GET /private` → ری‌دایرکت به صفحه لاگین Keycloak → بعد از ورود، **200 OK** و نمایش نام کاربر (از هدر `X-User`).
 * بررسی Set‑Cookie های OAuth2‑Proxy و Validation در `/oauth2/auth` (طبق راهنما). ([oauth2-proxy.github.io][1])
-
-> پس از تایید شما، مرحله اجرا: کانفیگ‌های نمونه‌ی Compose, nginx, oauth2‑proxy و یک realm JSON مینیمال آماده می‌کنم.
-
----
 
 ### فاز 3 — عبور هدرها و نمایش کاربر در Django + تنظیم محدودیت مسیرها
 
@@ -287,11 +273,11 @@ sequenceDiagram
 
 #### نقش تغییرات
 
-| جزء          | تغییر                                                                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `nginx.conf` | اطمینان از `auth_request_set` و عبور هدرهای `X-User`, `X-Email` به Django. ([oauth2-proxy.github.io][1])                  |
-| Django       | ویوی `/private` مقدار هدرها را خوانده و نشان دهد؛ `/public` مثل قبل.                                                      |
-| OAuth2‑Proxy | در صورت نیاز `--pass-authorization-header` یا `--pass-access-token` برای سناریوهای پیشرفته. ([oauth2-proxy.github.io][1]) |
+| جزء         | تغییر                                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nginx.conf` | اطمینان از `auth_request_set` و عبور هدرهای `X-User`, `X-Email` به Django. ([oauth2-proxy.github.io][1])                          |
+| Django         | ویوی `/private` مقدار هدرها را خوانده و نشان دهد؛ `/public` مثل قبل.                                                 |
+| OAuth2‑Proxy  | در صورت نیاز `--pass-authorization-header` یا `--pass-access-token` برای سناریوهای پیشرفته. ([oauth2-proxy.github.io][1]) |
 
 #### روش تست (کلی)
 
@@ -327,14 +313,13 @@ sequenceDiagram
 * ریپوی آموزشی **deskoh** (الگوی nip.io و alias شبکه برای سازگاری نام‌دامنه بین مرورگر و کانتینرها). ([GitHub][5])
 * یادداشت‌های تکمیلی درباره الگوی LB با nginx + oauth2‑proxy + keycloak (نوشته‌ی وبلاگی). ([layandreas.github.io][10])
 
-
-[1]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/integration/ "Integration | OAuth2 Proxy"
-[2]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/providers/keycloak_oidc/ "Keycloak OIDC | OAuth2 Proxy"
-[3]: https://www.keycloak.org/getting-started/getting-started-docker "Docker - Keycloak"
-[4]: https://www.reddit.com/r/selfhosted/comments/trf8h3/nginx_auth_request_and_keycloak/?utm_source=chatgpt.com "Nginx auth_request and Keycloak? : r/selfhosted"
-[5]: https://github.com/deskoh/nginx-oauth2-proxy-demo "GitHub - deskoh/nginx-oauth2-proxy-demo: NGINX with OAuth2 Proxy and Keycloak demo"
-[6]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/overview/?utm_source=chatgpt.com "Overview | OAuth2 Proxy - GitHub Pages"
-[7]: https://www.keycloak.org/server/importExport?utm_source=chatgpt.com "Importing and exporting realms - Keycloak"
-[8]: https://github.com/oauth2-proxy/oauth2-proxy/releases?utm_source=chatgpt.com "Releases · oauth2-proxy/oauth2-proxy"
-[9]: https://asec.ahnlab.com/en/89392/?utm_source=chatgpt.com "OAuth2-Proxy Security Update Advisory (CVE-2025-54576)"
-[10]: https://layandreas.github.io/personal-blog/posts/securing_any_app_with_oauth2_proxy/?utm_source=chatgpt.com "Securing any App with Oauth2Proxy | Personal Blog"
+[1]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/integration/
+[2]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/providers/keycloak_oidc/
+[3]: https://www.keycloak.org/getting-started/getting-started-docker
+[4]: https://www.reddit.com/r/selfhosted/comments/trf8h3/nginx_auth_request_and_keycloak/?utm_source=chatgpt.com
+[5]: https://github.com/deskoh/nginx-oauth2-proxy-demo
+[6]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/overview/?utm_source=chatgpt.com
+[7]: https://www.keycloak.org/server/importExport?utm_source=chatgpt.com
+[8]: https://github.com/oauth2-proxy/oauth2-proxy/releases?utm_source=chatgpt.com
+[9]: https://asec.ahnlab.com/en/89392/?utm_source=chatgpt.com
+[10]: https://layandreas.github.io/personal-blog/posts/securing_any_app_with_oauth2_proxy/?utm_source=chatgpt.com
