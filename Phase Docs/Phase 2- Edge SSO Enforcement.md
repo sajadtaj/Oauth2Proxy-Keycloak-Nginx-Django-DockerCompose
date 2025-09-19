@@ -67,10 +67,10 @@
 
 ```mermaid
 flowchart LR
-  U[Browser] --> N[Nginx (auth_request)]
+  U[Browser] --> N[Nginx auth_request]
   N -->|/public| D[Django]
   N -->|/private → /oauth2/auth| O[OAuth2-Proxy]
-  O <-->|OIDC| K[Keycloak (Realm: demo)]
+  O <-->|OIDC| K[Keycloak Realm: demo]
   O -->|202/401| N
   N -->|proxy + X-User/X-Email| D
 ```
@@ -188,9 +188,9 @@ auth-stack/
 ```mermaid
 flowchart LR
   U[Browser] --> N[Nginx]
-  N -->|/public (no auth)| D[Django]
+  N -->|/public no auth| D[Django]
   N -->|/private → auth_request| O[OAuth2-Proxy]
-  O <-->|OIDC| K[Keycloak (start-dev)]
+  O <-->|OIDC| K[Keycloak start-dev]
   O -->|202/401| N
   N -->|X-User/X-Email| D
 ```
@@ -390,6 +390,7 @@ print("DECODED_LEN=", len(base64.urlsafe_b64decode(b64)))
 PY
 
 ```
+
 > عدد بدست امده را در زیر وارد کنید :
 > OAUTH2_PROXY_COOKIE_SECRET=CHANGE_ME_32BYTE_BASE64URL
 
@@ -466,8 +467,10 @@ OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
 
 > نکته این دو باید برابر باشند:
 > `secret`=`OAUTH2_PROXY_CLIENT_SECRET`
-+ OAUTH2_PROXY_CLIENT_SECRET --> /oauth2-proxy/oauth2-proxy.cfg 
+
++ OAUTH2_PROXY_CLIENT_SECRET --> /oauth2-proxy/oauth2-proxy.cfg
 + secret  --> o keycloak/realms/demo-realm.json
+
 ---
 
 ## 6) اجرای تست (High-Level)
@@ -511,23 +514,8 @@ docker compose logs -f nginx
 * [ ] `X-User/X-Email` به Django پاس می‌شوند.
 * [ ] لاگ‌های Nginx/OAuth2-Proxy/Keycloak بدون خطای حیاتی.
 
-اگر موافقی، دستور بده تا وارد **فاز ۳** شویم (عبور هدرها در Django و نمایش نام/ایمیل کاربر در پاسخ).
-
-[1]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/integration/?utm_source=chatgpt.com "Integration | OAuth2 Proxy - GitHub Pages"
-[2]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/providers/keycloak_oidc/?utm_source=chatgpt.com "Keycloak OIDC | OAuth2 Proxy - GitHub Pages"
-[3]: https://www.keycloak.org/server/importExport?utm_source=chatgpt.com "Importing and exporting realms"
-[4]: https://nvd.nist.gov/vuln/detail/CVE-2025-54576?utm_source=chatgpt.com "CVE-2025-54576 Detail - NVD"
-[5]: https://socradar.io/oauth2-proxy-cve-2025-54576-bypass-authentication/?utm_source=chatgpt.com "Critical OAuth2-Proxy Vulnerability (CVE-2025-54576) Lets ..."
-[6]: https://github.com/oauth2-proxy/oauth2-proxy/releases?utm_source=chatgpt.com "Releases · oauth2-proxy/oauth2-proxy"
-[7]: https://www.keycloak.org/getting-started/getting-started-docker?utm_source=chatgpt.com "Docker"
-[8]: https://stackoverflow.com/questions/19366215/setting-headers-with-nginx-auth-request-and-oauth2-proxy?utm_source=chatgpt.com "Setting headers with NGINX auth_request and oauth2_proxy"
-[9]: https://oauth2-proxy.github.io/oauth2-proxy/?utm_source=chatgpt.com "Welcome | OAuth2 Proxy - GitHub Pages"
-[10]: https://github.com/oauth2-proxy/oauth2-proxy/issues/2653?utm_source=chatgpt.com "Trying to implement simple Oauth2-proxy/nginx configuration"
-[11]: https://zeropath.com/blog/cve-2025-54576-oauth2-proxy-auth-bypass?utm_source=chatgpt.com "OAuth2-Proxy CVE-2025-54576: Brief Summary of a ..."
-
 
 # Patch
-
 
 ## 🧩 نحوه دسترسی (Access)
 
@@ -688,13 +676,25 @@ curl -i -H 'Host: app.127.0.0.1.nip.io' http://127.0.0.1:8080/public
 
 ### ✅ چک‌لیست نهایی فاز ۲ (به‌روزشده با دسترسی/دیباگ)
 
-* [x] `/public` → 200 OK
-* [x] `/private` → 302 به Keycloak → پس از لاگین 200
-* [x] Issuer واحد (nip.io:8081) و هماهنگ با OAuth2-Proxy
-* [x] Redirect URI دقیق (`/oauth2/callback`) در Realm و Proxy
-* [x] Nginx: `resolver 127.0.0.11` + `proxy_pass` مستقیم (بدون upstream)
-* [x] Cookie Secret صحیح (۳۲ بایت)
-* [x] `/etc/hosts` (dev override) برای `app.` و `auth.` → `127.0.0.1`
-* [x] راهنمای دیباگ و روش کار با مرورگر (DNS/HSTS/DoH/Proxy/VPN)
+* [X] `/public` → 200 OK
+* [X] `/private` → 302 به Keycloak → پس از لاگین 200
+* [X] Issuer واحد (nip.io:8081) و هماهنگ با OAuth2-Proxy
+* [X] Redirect URI دقیق (`/oauth2/callback`) در Realm و Proxy
+* [X] Nginx: `resolver 127.0.0.11` + `proxy_pass` مستقیم (بدون upstream)
+* [X] Cookie Secret صحیح (۳۲ بایت)
+* [X] `/etc/hosts` (dev override) برای `app.` و `auth.` → `127.0.0.1`
+* [X] راهنمای دیباگ و روش کار با مرورگر (DNS/HSTS/DoH/Proxy/VPN)
 
 ---
+
+[1]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/integration/?utm_source=chatgpt.com
+[2]: https://oauth2-proxy.github.io/oauth2-proxy/configuration/providers/keycloak_oidc/?utm_source=chatgpt.com
+[3]: https://www.keycloak.org/server/importExport?utm_source=chatgpt.com
+[4]: https://nvd.nist.gov/vuln/detail/CVE-2025-54576?utm_source=chatgpt.com
+[5]: https://socradar.io/oauth2-proxy-cve-2025-54576-bypass-authentication/?utm_source=chatgpt.com
+[6]: https://github.com/oauth2-proxy/oauth2-proxy/releases?utm_source=chatgpt.com
+[7]: https://www.keycloak.org/getting-started/getting-started-docker?utm_source=chatgpt.com
+[8]: https://stackoverflow.com/questions/19366215/setting-headers-with-nginx-auth-request-and-oauth2-proxy?utm_source=chatgpt.com
+[9]: https://oauth2-proxy.github.io/oauth2-proxy/?utm_source=chatgpt.com
+[10]: https://github.com/oauth2-proxy/oauth2-proxy/issues/2653?utm_source=chatgpt.com
+[11]: https://zeropath.com/blog/cve-2025-54576-oauth2-proxy-auth-bypass?utm_source=chatgpt.com
